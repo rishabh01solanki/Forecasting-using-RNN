@@ -1,50 +1,60 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 # Load data
-df = pd.read_csv('/Users/rishabhsolanki/Desktop/Machine learning/houses.csv')
-x = df.iloc[:, 1].values
-y = df.iloc[:, 0].values  # price of houses
+df = pd.read_csv('/Users/rishabhsolanki/Desktop/Machine learning/Forecasting-using-RNN/synthetic_dataset.csv')
 
-# Initialize parameters
-theta = np.zeros((2,1))
-m = len(y)  # number of training examples
-x = x.reshape(m,1)
-y = y.reshape(m,1)
-X = np.hstack((np.ones((m,1)), x))  # Add a column of ones to x
+x = df.iloc[:, 1].values.astype(float)  # Size of houses
+y = df.iloc[:, 0].values.astype(float)  # Price of houses
 
-# Cost function
-def compute_cost(X, y, theta):
-    m = len(y)
-    predictions = X.dot(theta)
-    cost = (1/2*m) * np.sum(np.square(predictions-y))
-    return cost
+# Split data into training and testing sets
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
 
-# Gradient descent
-def gradient_descent(X, y, theta, alpha, num_iters):
-    m = len(y)
-    J_history = []
+# Data normalization
+x_scaler = StandardScaler()
+y_scaler = StandardScaler()
 
-    for i in range(num_iters):
-        predictions = X.dot(theta)
-        error = np.dot(X.transpose(), (predictions - y))
-        descent=alpha * 1/m * error
-        theta-=descent
-        J_history.append(compute_cost(X, y, theta))
+x_train = x_scaler.fit_transform(x_train.reshape(-1, 1))
+x_test = x_scaler.transform(x_test.reshape(-1, 1))
+y_train = y_scaler.fit_transform(y_train.reshape(-1, 1))
+y_test = y_scaler.transform(y_test.reshape(-1, 1))
 
-    return theta, J_history
+# Define a linear regression model using TensorFlow
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(1, input_shape=(1,))
+])
 
-# Hyperparameters
-alpha = 0.000001
-num_iters = 10000
+# Compile the model
+optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)  # Experiment with different learning rates
+model.compile(optimizer=optimizer, loss='mean_squared_error')
 
-theta, J_history = gradient_descent(X, y, theta, alpha, num_iters)
+# Train the model
+model.fit(x_train, y_train, epochs=100, verbose=0)
 
-# Plotting the regression line
-plt.scatter(x, y, color = 'red')
-plt.plot(x, X.dot(theta), color = 'blue')
+# Save the model
+model.save('regression_model')
+
+# Make predictions
+y_pred = model.predict(x_test)
+
+# Revert scaling for plotting
+x_test_orig = x_scaler.inverse_transform(x_test)
+y_pred_orig = y_scaler.inverse_transform(y_pred)
+y_test_orig = y_scaler.inverse_transform(y_test)
+
+# Plot the original data and the regression line
+plt.scatter(x_test_orig, y_test_orig, color='red', label='Actual Data')
+plt.plot(x_test_orig, y_pred_orig, color='blue', label='Regression Line')
 plt.title('Size of houses vs Price (Linear Regression)')
 plt.xlabel('Size of house')
 plt.ylabel('Price')
+plt.legend()
 plt.show()
+
+# Evaluate the model on the testing data
+mse = tf.keras.losses.mean_squared_error(y_test, y_pred)
+print(f"Mean Squared Error (MSE): {np.mean(mse)}")

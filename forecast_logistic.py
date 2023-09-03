@@ -24,7 +24,7 @@ def update(frame): # Update animation at each frame
 
 
 
-df = pd.read_csv('/Users/rishabhsolanki/Desktop/Machine learning/one_day.csv')
+df = pd.read_csv('/Users/rishabhsolanki/Desktop/Machine learning/Forecasting-using-RNN/one_day.csv')
 X = df.iloc[:, 1:4].values
 y = df.iloc[:, 2].values
 X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
