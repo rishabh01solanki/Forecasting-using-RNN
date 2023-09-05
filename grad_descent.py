@@ -1,60 +1,70 @@
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+import tensorflow as tf
+import coremltools as ct
 
-# Load data
-df = pd.read_csv('/Users/rishabhsolanki/Desktop/Machine learning/Forecasting-using-RNN/synthetic_dataset.csv')
+# Generate synthetic data
+np.random.seed(0)
+X = np.linspace(1000, 3000, 1000).reshape(-1, 1)
+y = 0.3 * X + 50 + np.random.randn(1000, 1) * 50
 
-x = df.iloc[:, 1].values.astype(float)  # Size of houses
-y = df.iloc[:, 0].values.astype(float)  # Price of houses
+# Scale the features and labels
+scaler_x = StandardScaler()
+scaler_y = StandardScaler()
+X = scaler_x.fit_transform(X)
+y = scaler_y.fit_transform(y)
 
-# Split data into training and testing sets
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Data normalization
-x_scaler = StandardScaler()
-y_scaler = StandardScaler()
-
-x_train = x_scaler.fit_transform(x_train.reshape(-1, 1))
-x_test = x_scaler.transform(x_test.reshape(-1, 1))
-y_train = y_scaler.fit_transform(y_train.reshape(-1, 1))
-y_test = y_scaler.transform(y_test.reshape(-1, 1))
-
-# Define a linear regression model using TensorFlow
+# Define the model
 model = tf.keras.Sequential([
-    tf.keras.layers.Dense(1, input_shape=(1,))
+    tf.keras.layers.Dense(64, activation='relu', input_shape=(1,)),  # First hidden layer with 64 neurons and ReLU activation
+    tf.keras.layers.Dense(32, activation='relu'),  # Second hidden layer with 32 neurons and ReLU activation
+    tf.keras.layers.Dense(1)  # Output layer with 1 neuron (since we're doing regression)
 ])
 
 # Compile the model
-optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)  # Experiment with different learning rates
-model.compile(optimizer=optimizer, loss='mean_squared_error')
+model.compile(optimizer='adam', loss='mean_squared_error')
 
 # Train the model
-model.fit(x_train, y_train, epochs=100, verbose=0)
+model.fit(X_train, y_train, epochs=100)
+#model.save('regression_model')
+mlmodel = ct.convert(model, convert_to="mlprogram")
+# Save the Core ML model
+mlmodel.save("MyModel.mlpackage")
 
-# Save the model
-model.save('regression_model')
 
 # Make predictions
-y_pred = model.predict(x_test)
+y_pred = model.predict(X_test)
 
-# Revert scaling for plotting
-x_test_orig = x_scaler.inverse_transform(x_test)
-y_pred_orig = y_scaler.inverse_transform(y_pred)
-y_test_orig = y_scaler.inverse_transform(y_test)
+# Evaluate the model
+mse_test = model.evaluate(X_test, y_test)
+print(f'Test MSE: {mse_test}')
 
-# Plot the original data and the regression line
-plt.scatter(x_test_orig, y_test_orig, color='red', label='Actual Data')
-plt.plot(x_test_orig, y_pred_orig, color='blue', label='Regression Line')
-plt.title('Size of houses vs Price (Linear Regression)')
-plt.xlabel('Size of house')
-plt.ylabel('Price')
+feature_mean = scaler_x.mean_[0]
+feature_std = scaler_x.scale_[0]
+label_mean = scaler_y.mean_[0]
+label_std = scaler_y.scale_[0]
+
+print("Feature Mean:", feature_mean)
+print("Feature Std:", feature_std)
+print("Label Mean:", label_mean)
+print("Label Std:", label_std)
+
+
+# Sort the test and predicted data for plotting
+sorted_order = np.argsort(scaler_x.inverse_transform(X_test), axis=0).flatten()
+sorted_x_test = scaler_x.inverse_transform(X_test)[sorted_order]
+sorted_y_pred = scaler_y.inverse_transform(y_pred)[sorted_order]
+
+# Plotting
+plt.scatter(scaler_x.inverse_transform(X_test), scaler_y.inverse_transform(y_test), color='red', label='Actual')
+plt.plot(sorted_x_test, sorted_y_pred, color='blue', label='Predicted Line')
+plt.xlabel('Size of house (sq ft)')
+plt.ylabel('Price in $1000')
+plt.title('House Price Prediction')
 plt.legend()
 plt.show()
-
-# Evaluate the model on the testing data
-mse = tf.keras.losses.mean_squared_error(y_test, y_pred)
-print(f"Mean Squared Error (MSE): {np.mean(mse)}")

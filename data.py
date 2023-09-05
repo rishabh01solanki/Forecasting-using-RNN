@@ -18,7 +18,7 @@ for _ in range(num_data_points):
     
     # Generate price based on size with a more realistic linear relationship
     # Add some random noise to the price to make it more realistic
-    noise = random.uniform(-10000, 10000)
+    noise = random.uniform(-100000, 100000)
     price = (a * size) + b + noise
     
     # Convert the price to units of $1000 for consistency with the original code
