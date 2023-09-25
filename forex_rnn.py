@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Load the data from the CSV file
-file_path = '/Users/rishabhsolanki/Desktop/Machine learning/Forecasting-using-RNN/one_day.csv'
+file_path = '/Users/rishabhsolanki/Desktop/Machine learning/Forecasting-using-RNN/euro_us.csv'
 df = pd.read_csv(file_path)
 
 # Display the first few rows of the dataframe
